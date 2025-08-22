@@ -1,4 +1,4 @@
-
+### Work in progress
 ## Queries
 
 Simply put a query is just a message that is sent to a Name server  to get a response.   
