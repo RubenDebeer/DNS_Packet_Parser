@@ -35,12 +35,14 @@ func (b *ByteBuffer) ChangePosition(position int) {
 }
 
 // Read a Single Byte
-func (b *ByteBuffer) ReadByte() (returnByte byte, returnError error) { // I added the Explicit return because the Naked return makes me feel Dirty,(Like my code is dirty).
+// I added the Explicit return because the Naked return makes me feel Dirty,(Like my code is dirty).
+func (b *ByteBuffer) ReadByte() (returnByte byte, returnError error) {
 	if b.readerPosition > len(b.buffer) {
 		returnByte = 0
 		returnError = errByteOutOfRange
 		return returnByte, returnError
 	}
+
 	returnByte = b.buffer[b.readerPosition]
 	returnError = nil
 
@@ -76,4 +78,52 @@ func (b *ByteBuffer) GetByteRange(startPos, copyLength int) (byteRange []byte, b
 	byteRangeError = nil
 
 	return byteRange, byteRangeError
+}
+
+// Read 2 bytes as Big-Endian
+func (b *ByteBuffer) ReadU16() (TwoBytes uint16, errRead error) {
+	b1, err := b.ReadByte()
+
+	if err != nil {
+		return 0, err
+	}
+
+	b2, err := b.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+
+	TwoBytes = (uint16(b1) << 8) | uint16(b2)
+	errRead = nil
+
+	return TwoBytes, errRead
+}
+
+// Read 4 bytes as Big-Endian
+func (b *ByteBuffer) ReadU32() (FourBytes uint32, errRead error) {
+	b1, err := b.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+
+	b2, err := b.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+
+	b3, err := b.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+
+	b4, err := b.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+
+	//               32 - 8 == 24          14 - 8 == 16         16 - 8 == 8
+	FourBytes = (uint32(b1) << 24) | (uint32(b2) << 16) | (uint32(b3) << 8) | uint32(b4)
+	errRead = nil
+
+	return FourBytes, errRead
 }
