@@ -35,21 +35,45 @@ func (b *ByteBuffer) ChangePosition(position int) {
 }
 
 // Read a Single Byte
-func (b *ByteBuffer) ReadByte() (returnByte byte, ReturnError error) { // I added the Explicit return because the Naked return makes me feel Dirty,(Like my code is dirty).
+func (b *ByteBuffer) ReadByte() (returnByte byte, returnError error) { // I added the Explicit return because the Naked return makes me feel Dirty,(Like my code is dirty).
 	if b.readerPosition > len(b.buffer) {
 		returnByte = 0
-		ReturnError = errByteOutOfRange
-		return returnByte, ReturnError
+		returnError = errByteOutOfRange
+		return returnByte, returnError
 	}
 	returnByte = b.buffer[b.readerPosition]
-	ReturnError = nil
+	returnError = nil
 
 	b.readerPosition++
 
-	return returnByte, ReturnError
+	return returnByte, returnError
 }
 
 // get a Single byte without Moving the buffer position
-func (b *ByteBuffer) GetByte() (returnByte byte, ReturnError error)
+func (b *ByteBuffer) GetByte() (returnByte byte, returnError error) {
+
+	if b.readerPosition > len(b.buffer) {
+		returnByte = 0
+		returnError = errByteOutOfRange
+		return returnByte, returnError
+	}
+	returnByte = b.buffer[b.readerPosition]
+	returnError = nil
+
+	return returnByte, returnError
+}
 
 // Get a range of Bytes
+func (b *ByteBuffer) GetByteRange(startPos, copyLength int) (byteRange []byte, byteRangeError error) {
+
+	if startPos > len(b.buffer) || startPos < 0 || startPos+copyLength > len(b.buffer) {
+		byteRange = nil
+		byteRangeError = errByteOutOfRange
+		return byteRange, byteRangeError
+	}
+
+	byteRange = b.buffer[:]
+	byteRangeError = nil
+
+	return byteRange, byteRangeError
+}
