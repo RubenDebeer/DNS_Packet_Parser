@@ -11,3 +11,5 @@ type Packet struct {
 	PacketBuffer [512]byte
 	position     int
 }
+
+// This is new for me but I need to define a "receiver" it's like a method within a "Class" I Think...
