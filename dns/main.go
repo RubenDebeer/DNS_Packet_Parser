@@ -1,43 +1,36 @@
 package main
 
-import "fmt"
+import (
+	"errors"
+)
 
 func main() {
-	fmt.Println("Hello, World!")
+
 }
 
-// So thinking we need some Data Structure to store the Packets
-type Packet struct {
-	PacketBuffer [512]byte
-	position     int
+var errEOB error = errors.New(" End Of Buffer")
+
+type packetBuffer struct {
+	ByteBuffer     [512]byte
+	ReaderPosition int
 }
 
-// we want to initialize the packet to zero .
-func new_buf() *Packet {
-	return &Packet{
-		PacketBuffer: [512]byte{},
-		position:     0,
-	}
-}
+// Initialize the Buffer
 
-// This new for me but this is called a "Receiver" and it's like a method of a class.
-func (p *Packet) Load(internalCopy []byte) {
+// Load a copy of the buffer
 
-	packetByteLength := len(internalCopy)
+// Get the byte based on a Position
 
-	if packetByteLength > 512 {
-		packetByteLength = len(p.PacketBuffer)
-	}
-	copy(p.PacketBuffer[:], internalCopy[:packetByteLength])
-}
+// Step over a byte
 
-// A receiver to get the pozzy
-func (p *Packet) Pos() int {
-	return p.position
-}
+// Change the Position in a Buffer
 
-// A Receiver to step over the Buffer
-func (p *Packet) Step(steps int) error {
-	p.position += steps
-	return nil
-}
+// Read a Single Byte
+
+// get a Single byte without Moving the buffer position
+
+// Get a range of Bytes
+
+// Read 2 Bytes
+
+// Read 4  bytes and stepping four steps forward

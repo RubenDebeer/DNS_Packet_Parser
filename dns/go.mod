@@ -1,3 +1,3 @@
-module go-hello-world
+module go-dns
 
 go 1.18
