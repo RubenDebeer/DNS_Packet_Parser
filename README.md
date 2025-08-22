@@ -9,18 +9,18 @@ These responses are either:
 * An **error** response saying something went wrong.
 
 Users don’t create these queries but they interact with the Resolver instead , meaning that the resolver handles **Queries** and **Responses** on the users half. 
-
-**![Resolver](./images/Resolver.png)**
+    
+**![Resolver](./dns/images/Resolver.png)**
 
 The network layer that is being used for these messages can be **UDP (User Datagram Protocol)** or **TCP (Transmission Control Protocol)**
 
-**![UDP and TCP](./images/Transport_Layer.png)**
+**![UDP and TCP](./dns/images/Transport_Layer.png)**
 
 The message format for a **Query** and a **Response** is the same; it is a message that contains a Header with 4 main sections. 
 
 The most important **field** in the **header** is a **four** **bit** **field** called the **opcode** which is how **different queries are separated.**
 
-**![Protocol](./images/DNS_Protocol.png)**
+**![Protocol](./dns/images/DNS_Protocol.png)**
 
 | Section  | Size | Type | Purpose |
 | ----- | ----- | ----- | ----- |
@@ -33,8 +33,7 @@ The most important **field** in the **header** is a **four** **bit** **field** c
 
 #### Headers
 
-**![Header](./images/DNS_Header_Format.png)**
-
+**![Header](./dns/images/DNS_Header_Format.png)**
 
 | RFC Name | Descriptive Name | Length | Description |
 | ----- | ----- | ----- | ----- |
