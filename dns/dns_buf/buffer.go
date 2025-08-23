@@ -128,7 +128,9 @@ func (b *ByteBuffer) ReadU32() (FourBytes uint32, errRead error) {
 	return FourBytes, errRead
 }
 
-// EOD Continue tomorrow with the QName Function
+// A Standard Query looks like
+// QName , QTYPE , QCLASS
+
 func (b *ByteBuffer) ReadQName() (string, error) {
 
 }
