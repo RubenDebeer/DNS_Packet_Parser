@@ -1,7 +1,6 @@
 package dnsbuf
 
 // The goal of this Module is to provide helper functions to read a Packet
-
 import (
 	"fmt"
 	"strings"
@@ -167,7 +166,7 @@ func (b *ByteBuffer) ReadQname() (string, error) {
 	return out.String(), nil
 }
 
-// Define a group of constants
+// Result Code
 type ResultCode int
 
 const (
@@ -218,6 +217,7 @@ func FromNum(num int) ResultCode {
 	}
 }
 
+// Header
 type DnsHeader struct {
 	id     int16
 	qr     bool
@@ -264,4 +264,65 @@ func NewDnsHeader() DnsHeader {
 	}
 }
 
-func ReadHeader()
+func (h *DnsHeader) Read(packetBuffer *ByteBuffer) error {
+	h.id = int16(packetBuffer.ReadU16())
+
+	flags := packetBuffer.ReadU16()
+	upperByte := byte(flags >> 8)
+	lowerByte := byte(flags & 0x00FF)
+	// Uppper Lower --> Big Endian-Ness Most Significant Bit in the Least significant memmory address.
+
+	//Bit   7  6   5  4  3  2  1  0
+	//Field QR OP          AA TC RD
+	h.flag_recursion_desired = (upperByte & (1 << 0)) != 0
+	h.flag_truncated_message = (upperByte & (1 << 1)) != 0
+	h.flag_authoritative_awnser = (upperByte & (1 << 2)) != 0
+	h.opcode = int16((upperByte >> 3) & 0x0F)
+	h.qr = (upperByte & (1 << 7)) != 0
+
+	h.flag_response_code = FromNum(int(lowerByte & 0x0F))
+	h.flag_checking_disabled_z = (lowerByte & (1 << 4)) != 0
+	h.flag_athenticated_data_z = (lowerByte & (1 << 5)) != 0
+	h.flag_reserved_z = (lowerByte & (1 << 6)) != 0
+	h.flag_recursion_available = (lowerByte & (1 << 7)) != 0
+
+	// Section counts
+	h.question_count = int16(packetBuffer.ReadU16())
+	h.awnser_count = int16(packetBuffer.ReadU16())
+	h.authority_count = int16(packetBuffer.ReadU16())
+	h.aditional_count = int16(packetBuffer.ReadU16())
+
+	return nil
+}
+
+// Query Type
+type QueryType int
+
+const (
+	UNKNOWN QueryType = 0
+	A       QueryType = 1
+	CNAME   QueryType = 2
+)
+
+// DNS Question
+type DnsQuestion struct {
+	QName  string
+	QType  QueryType
+	QClass uint16
+}
+
+func NewDnsQuestion(name string, q_type QueryType) DnsQuestion {
+	return DnsQuestion{
+		QName: name,
+		QType: q_type,
+	}
+}
+
+func (dns_query *DnsQuestion) Read(packetBuffer *ByteBuffer) error {
+
+	dns_query.QName, _ = packetBuffer.ReadQname()
+	dns_query.QType = QueryType(packetBuffer.ReadU16())
+	dns_query.QClass = packetBuffer.ReadU16()
+
+	return nil
+}
