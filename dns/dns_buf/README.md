@@ -1,16 +1,46 @@
-# Explain the Code dude.
-// TODO: Draw out the Actual Packet so that I can better understand it.
+## Parsing the DNS Packet
 
 
-# QNAME Decomposition
-Query consists of 3 parts: the Query name, The Type and the Class. DNS encodes each name into a sequence of labels, with each label prepended by a single **byte** indicating it's length. IF We use "google.com" as a example "google" is 6 bytes and is thus preceded by **0x06**, while "com" is 3 bytes and is preceded by **0x03**. Finally, all names are terminated by a label of **zero length**, that is a null byte.
+#### Headers
 
-**Quote from FRC 1034**
-"Each node has a label, which is zero to 63 octets in length.  Brother
-nodes may not have the same label, although the same label can be used
-for nodes which are not brothers.  One label is reserved, and that is
-the null (i.e., zero length) label used for the root."
+**![Header](./dns/images/Header_Format.png)**
 
-[3]www[6]google[3]com[0]
+| RFC Name | Descriptive Name | Length | Description |
+| ----- | ----- | ----- | ----- |
+| ID | Packet Identifier | 16 bits ( 2 Bytes) | A random identifier is assigned to query packets. Response packets must reply with the same id. This is needed to differentiate responses due to the stateless nature of UDP. |
+| QR | Query Response | 1 bit | 0 for queries, 1 for responses. |
+| OPCODE | Operation Code | 4 bits | **Typically always 0**, see RFC1035 for details. |
+| Flag :AA | Authoritative Answer | 1 bit | Set to 1 if the responding server is authoritative \- that is, it "owns" \- the domain queried. |
+| Flag :TC | Truncated Message | 1 bit | Set to 1 if the message length exceeds 512 bytes. Traditionally a hint that the query can be reissued using TCP, for which the length limitation doesn't apply. |
+| Flag :RD | Recursion Desired | 1 bit | Set by the sender of the request if the server should attempt to resolve the query recursively if it does not have an answer readily available. |
+| Flag :RA | Recursion Available | 1 bit | Set by the server to indicate whether or not recursive queries are allowed. |
+| Flag :Z | Reserved | 3 bits | Originally reserved for later use, but now used for DNSSEC queries. |
+| Flag :RCODE | Response Code | 4 bits | Set by the server to indicate the status of the response, i.e. whether or not it was successful or failed, and in the latter case providing details about the cause of the failure. |
+| QDCOUNT | Question Count | 16 bits | The number of entries in the Question Section |
+| ANCOUNT | Answer Count | 16 bits | The number of entries in the Answer Section |
+| NSCOUNT | Authority Count | 16 bits | The number of entries in the Authority Section |
+| ARCOUNT | Additional Count | 16 bits | The number of entries in the Additional Section |
 
-That’s: 0x03 'w' 'w' 'w'  0x06 'g' ... 'e'  0x03 'c' 'o' 'm'  0x00 → www.google.com
+
+#### Questions
+**![Questions](./dns/images/Question_Format.png)**
+
+Standard Query
+A Standard query specifies a target domain name (QNAME) , query type (QTYPE) and a query class (QCLASS) and asks for the matching RR. The QTYPE and QCLASS fields are each 16 bits long (2bytes).
+
+| Field | Type | Description |
+| ----- | ----- | ----- |
+| Name | Label Sequence | The **domain name**, encoded as a sequence of labels.(QNAME) |
+| Type | 2-byte Integer | The record type. |
+| Class | 2-byte Integer | The class, in practice, is always set to 1\. |
+
+#### Answers
+**![Answers](./dns/images/Answer_Format.png)**
+
+| Field | Type | Description |
+| ----- | ----- | ----- |
+| Name | Label Sequence | The domain name, encoded as a sequence of labels. |
+| Type | 2-byte Integer | The record type. |
+| Class | 2-byte Integer | The class, in practice, is always set to 1\. |
+| TTL | 4-byte Integer | Time-To-Live, i.e. how long a record can be cached before it should be required. |
+| Len | 2-byte Integer | Length of the record type specific data. |
