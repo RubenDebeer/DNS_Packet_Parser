@@ -166,3 +166,5 @@ func (b *ByteBuffer) ReadQname() (string, error) {
 
 	return out.String(), nil
 }
+
+// How The Fuck is there no enums in Golang ?
