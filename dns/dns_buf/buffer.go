@@ -167,4 +167,101 @@ func (b *ByteBuffer) ReadQname() (string, error) {
 	return out.String(), nil
 }
 
-// How The Fuck is there no enums in Golang ?
+// Define a group of constants
+type ResultCode int
+
+const (
+	NOERROR  ResultCode = 0
+	FORMERR  ResultCode = 1
+	SERVFAIL ResultCode = 2
+	NXDOMAIN ResultCode = 3
+	NOTIMP   ResultCode = 4
+	REFUSED  ResultCode = 5
+)
+
+func (rescode ResultCode) String() string {
+	switch rescode {
+	case NOERROR:
+		return "NOERROR"
+	case FORMERR:
+		return "FORMERR"
+	case SERVFAIL:
+		return "SERVFAIL"
+	case NXDOMAIN:
+		return "NXDOMAIN"
+	case NOTIMP:
+		return "NOTIMP"
+	case REFUSED:
+		return "REFUSED"
+	default:
+		return fmt.Sprintf("UNKNOWN(%d)", int(rescode))
+	}
+}
+
+// Given a Number retun a Result Code
+func FromNum(num int) ResultCode {
+	switch num {
+	case 1:
+		return FORMERR
+	case 2:
+		return SERVFAIL
+	case 3:
+		return NXDOMAIN
+	case 4:
+		return NOTIMP
+	case 5:
+		return REFUSED
+	case 0:
+		fallthrough
+	default:
+		return NOERROR
+	}
+}
+
+type DnsHeader struct {
+	id     int16
+	qr     bool
+	opcode int16
+
+	flag_authoritative_awnser bool
+	flag_truncated_message    bool
+	flag_recursion_desired    bool
+	flag_recursion_available  bool
+
+	// Z Flag 3 Bits
+	flag_reserved_z          bool
+	flag_athenticated_data_z bool
+	flag_checking_disabled_z bool
+
+	// 4 Bits
+	flag_response_code ResultCode
+
+	question_count  int16
+	awnser_count    int16
+	authority_count int16
+	aditional_count int16
+}
+
+func NewDnsHeader() DnsHeader {
+	return DnsHeader{
+		id:     0,
+		qr:     false,
+		opcode: 0,
+
+		flag_authoritative_awnser: false,
+		flag_truncated_message:    false,
+		flag_recursion_desired:    false,
+		flag_recursion_available:  false,
+		flag_reserved_z:           false,
+		flag_athenticated_data_z:  false,
+		flag_checking_disabled_z:  false,
+		flag_response_code:        NOERROR,
+
+		question_count:  0,
+		awnser_count:    0,
+		authority_count: 0,
+		aditional_count: 0,
+	}
+}
+
+func ReadHeader()
