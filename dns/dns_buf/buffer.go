@@ -3,11 +3,9 @@ package dnsbuf
 // The goal of this Module is to provide helper functions to read a Packet
 
 import (
-	"errors"
 	"fmt"
+	"strings"
 )
-
-var errByteOutOfRange error = errors.New("ByteOut of range.")
 
 type ByteBuffer struct {
 	buffer         [512]byte
@@ -102,43 +100,69 @@ func (b *ByteBuffer) ReadU32() (FourBytes uint32, errRead error) {
 	return FourBytes, errRead
 }
 
-func (b *ByteBuffer) ReadQName(domainName string) (errWrite error) {
+func (b *ByteBuffer) ReadQname() (string, error) {
+	const maxJumps = 10
 
-	// --> [6][google][3][com][0]
-	// --> [0x06][0x67 0x6F 0x6F 0x67 0x6C 0x65][0x03][0x63 0x6F 0x6D][0x00]
-	//[len][bytes][len][bytes]...[0]
+	localPos := 0
+	jumped := false
+	jumps := 0
 
-	// --> [0x06][0x67 0x6F 0x6F 0x67 0x6C 0x65] | [0x03][0x63 0x6F 0x6D] | [0x00]
+	var out strings.Builder
+	delimiter := ""
 
-	// Create a local position
-	// Read the Original buffer from current position for the length provided in the message
-	// Create a While loop
-	// Get the length
-	// Read the content from the original buffer
+	for {
+		// Vaidation
+		if jumps > maxJumps {
+			return " ", fmt.Errorf("who , we are trying to jump the gun there max is %d", maxJumps)
+		}
+		if localPos >= len(b.buffer) {
+			return "", fmt.Errorf("whow, out of range")
+		}
 
-	// Read the first byte
+		length := b.Pos()
 
-	var localPos int = b.Pos()
-	var doneReading bool = false
+		// If the byte at Pos is 11 i.e a flag that indicates a comprtession we need to move to the actual value
 
-	for doneReading != false {
+		// Compressed Lable Case
+		if (length & 0xC0) == 0xC0 {
+			if localPos >= len(b.buffer) {
+				return "", fmt.Errorf("whow, out of range")
+			}
 
-		lengthByte := b.GetByte(localPos)
+			if !jumped {
+				b.ChangePosition(localPos + 1)
+			}
 
-		if lengthByte == 0 {
+			b2 := b.GetByte(localPos + 1)
+			offset := int((uint16(length&0x3F) << 8) | uint16(b2))
+
+			localPos = offset
+			jumped = true
+			jumps++
+			continue
+		}
+
+		// Normal Lable case
+		localPos++
+		if length == 0 {
 			break
 		}
 
-		label := b.GetByteRange(localPos, int(lengthByte))
-
-		if label != nil {
-			domainName += string(label) + "."
+		if localPos+(length) > len(b.buffer) {
+			return "", fmt.Errorf("whow, out of range")
 		}
 
-		localPos++
+		out.WriteString(delimiter)
+		lable := b.GetByteRange(localPos, int(length))
+		out.WriteString(strings.ToLower(string(lable)))
 
-		fmt.Println(label)
-
+		delimiter = "."
+		localPos = int(length)
 	}
 
+	if !jumped {
+		b.ChangePosition(localPos)
+	}
+
+	return out.String(), nil
 }
