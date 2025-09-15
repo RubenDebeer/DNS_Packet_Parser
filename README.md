@@ -50,6 +50,4 @@ Now one of the most important concepts to understand about the message is how th
 | **Additional Section** | Variable | List of Records | These are additional Records that might be useful. |
 
 **![Serialization](./dns/images/Serialization.png)**
-The DNS Message is represented as a series fo Bytes. This is due to a porcess called serialization and ddesiralization, comonly refered to as marchaling and demarshaling. This is the process of converting a data structure or object into a format that can be easily stored or transmitted and then reconstructing it back into its original form. Thus the DNS messages are serialized into a byte stream for transmission over the network and then deserialized back into a structured format upon receipt.
-
-x
+The DNS Message is represented as a series fo Bytes. This is due to a porcess called serialization and ddesiralization, comonly refered to as marchaling and demarshaling. This is the process of converting a data structure or object into a format that can be easily stored or transmitted and then reconstructing it back into its original form. Thus the DNS messages are serialized into a byte stream for transmission over the network and then deserialized back into a structured format upon receipt. For more Detail have a look at this exy packet parser:[Parse DNS Message](./dns/dns_buf/README.md)

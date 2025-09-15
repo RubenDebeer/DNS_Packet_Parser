@@ -3,7 +3,7 @@
 
 #### Headers
 
-**![Header](./dns/images/Header_Format.png)**
+**![Header](../images/Header_Format.png)**
 
 | RFC Name | Descriptive Name | Length | Description |
 | ----- | ----- | ----- | ----- |
@@ -23,7 +23,7 @@
 
 
 #### Questions
-**![Questions](./dns/images/Question_Format.png)**
+**![Questions](../images//Question_Format.png)**
 
 Standard Query
 A Standard query specifies a target domain name (QNAME) , query type (QTYPE) and a query class (QCLASS) and asks for the matching RR. The QTYPE and QCLASS fields are each 16 bits long (2bytes).
@@ -35,7 +35,7 @@ A Standard query specifies a target domain name (QNAME) , query type (QTYPE) and
 | Class | 2-byte Integer | The class, in practice, is always set to 1\. |
 
 #### Answers
-**![Answers](./dns/images/Answer_Format.png)**
+**![Answers](../images//Answer_Format.png)**
 
 | Field | Type | Description |
 | ----- | ----- | ----- |
