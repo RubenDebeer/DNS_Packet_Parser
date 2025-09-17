@@ -20,6 +20,12 @@ func New() *ByteBuffer {
 	}
 }
 
+func (b *ByteBuffer) Load(p []byte) int {
+	n := copy(b.buffer[:], p)
+	b.readerPosition = 0
+	return n
+}
+
 // Get the byte based on a Position
 func (b *ByteBuffer) Pos() int { return b.readerPosition }
 
@@ -429,20 +435,20 @@ func ReadRecord(packetBuffer *ByteBuffer) (DnsRecord, error) {
 }
 
 type DnsPacket struct {
-	header      DnsHeader
-	questions   []DnsQuestion
-	answers     []DnsRecord
-	authorities []DnsRecord
-	resources   []DnsRecord
+	Header      DnsHeader
+	Questions   []DnsQuestion
+	Answers     []DnsRecord
+	Authorities []DnsRecord
+	Resources   []DnsRecord
 }
 
 func NewDnsPacket() DnsPacket {
 	return DnsPacket{
-		header:      NewDnsHeader(),
-		questions:   make([]DnsQuestion, 0),
-		answers:     make([]DnsRecord, 0),
-		authorities: make([]DnsRecord, 0),
-		resources:   make([]DnsRecord, 0),
+		Header:      NewDnsHeader(),
+		Questions:   make([]DnsQuestion, 0),
+		Answers:     make([]DnsRecord, 0),
+		Authorities: make([]DnsRecord, 0),
+		Resources:   make([]DnsRecord, 0),
 	}
 }
 
@@ -450,40 +456,40 @@ func ReadPacket(buffer *ByteBuffer) (DnsPacket, error) {
 
 	packet := NewDnsPacket()
 
-	if err := (&packet.header).Read(buffer); err != nil {
+	if err := (&packet.Header).Read(buffer); err != nil {
 		return DnsPacket{}, err
 	}
 
-	for i := 0; i < int(packet.header.question_count); i++ {
+	for i := 0; i < int(packet.Header.question_count); i++ {
 		q := DnsQuestion{}
 		if err := (&q).Read(buffer); err != nil {
 			return DnsPacket{}, err
 		}
-		packet.questions = append(packet.questions, q)
+		packet.Questions = append(packet.Questions, q)
 	}
 
-	for i := 0; i < int(packet.header.awnser_count); i++ {
+	for i := 0; i < int(packet.Header.awnser_count); i++ {
 		rec, err := ReadRecord(buffer)
 		if err != nil {
 			return DnsPacket{}, err
 		}
-		packet.answers = append(packet.answers, rec)
+		packet.Answers = append(packet.Answers, rec)
 	}
 
-	for i := 0; i < int(packet.header.authority_count); i++ {
+	for i := 0; i < int(packet.Header.authority_count); i++ {
 		rec, err := ReadRecord(buffer)
 		if err != nil {
 			return DnsPacket{}, err
 		}
-		packet.authorities = append(packet.authorities, rec)
+		packet.Authorities = append(packet.Authorities, rec)
 	}
 
-	for i := 0; i < int(packet.header.aditional_count); i++ {
+	for i := 0; i < int(packet.Header.aditional_count); i++ {
 		rec, err := ReadRecord(buffer)
 		if err != nil {
 			return DnsPacket{}, err
 		}
-		packet.resources = append(packet.resources, rec)
+		packet.Resources = append(packet.Resources, rec)
 	}
 
 	return packet, nil
