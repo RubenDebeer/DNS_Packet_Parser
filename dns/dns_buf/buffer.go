@@ -3,6 +3,7 @@ package dnsbuf
 // The goal of this Module is to provide helper functions to read a Packet
 import (
 	"fmt"
+	"net"
 	"strings"
 )
 
@@ -72,7 +73,7 @@ func (b *ByteBuffer) GetByteRange(startPos, copyLength int) (byteRange []byte) {
 }
 
 // Read 2 bytes as Big-Endian
-func (b *ByteBuffer) ReadU16() (TwoBytes uint16) {
+func (b *ByteBuffer) ReadInt16() (TwoBytes uint16) {
 	b1 := b.ReadByte()
 
 	b2 := b.ReadByte()
@@ -83,7 +84,7 @@ func (b *ByteBuffer) ReadU16() (TwoBytes uint16) {
 }
 
 // Read 4 bytes as Big-Endian
-func (b *ByteBuffer) ReadU32() (FourBytes uint32, errRead error) {
+func (b *ByteBuffer) ReadInt32() (FourBytes uint32, errRead error) {
 	b1 := b.ReadByte()
 
 	b2 := b.ReadByte()
@@ -265,9 +266,9 @@ func NewDnsHeader() DnsHeader {
 }
 
 func (h *DnsHeader) Read(packetBuffer *ByteBuffer) error {
-	h.id = int16(packetBuffer.ReadU16())
+	h.id = int16(packetBuffer.ReadInt16())
 
-	flags := packetBuffer.ReadU16()
+	flags := packetBuffer.ReadInt16()
 	upperByte := byte(flags >> 8)
 	lowerByte := byte(flags & 0x00FF)
 	// Uppper Lower --> Big Endian-Ness Most Significant Bit in the Least significant memmory address.
@@ -287,10 +288,10 @@ func (h *DnsHeader) Read(packetBuffer *ByteBuffer) error {
 	h.flag_recursion_available = (lowerByte & (1 << 7)) != 0
 
 	// Section counts
-	h.question_count = int16(packetBuffer.ReadU16())
-	h.awnser_count = int16(packetBuffer.ReadU16())
-	h.authority_count = int16(packetBuffer.ReadU16())
-	h.aditional_count = int16(packetBuffer.ReadU16())
+	h.question_count = int16(packetBuffer.ReadInt16())
+	h.awnser_count = int16(packetBuffer.ReadInt16())
+	h.authority_count = int16(packetBuffer.ReadInt16())
+	h.aditional_count = int16(packetBuffer.ReadInt16())
 
 	return nil
 }
@@ -321,8 +322,169 @@ func NewDnsQuestion(name string, q_type QueryType) DnsQuestion {
 func (dns_query *DnsQuestion) Read(packetBuffer *ByteBuffer) error {
 
 	dns_query.QName, _ = packetBuffer.ReadQname()
-	dns_query.QType = QueryType(packetBuffer.ReadU16())
-	dns_query.QClass = packetBuffer.ReadU16()
+	dns_query.QType = QueryType(packetBuffer.ReadInt16())
+	dns_query.QClass = packetBuffer.ReadInt16()
 
 	return nil
+}
+
+// DNS Record
+type DnsRecord interface {
+	Type() QueryType
+	Domain() string
+	TTL() uint32
+	fmt.Stringer
+}
+
+type UnknownRecord struct {
+	DomainName string
+	QType      uint16
+	DataLen    uint16
+	TTLVal     uint32
+}
+
+func (r *UnknownRecord) Type() QueryType {
+	return UNKNOWN
+}
+
+func (r *UnknownRecord) Domain() string {
+	return r.DomainName
+}
+
+func (r *UnknownRecord) TTL() uint32 {
+	return r.TTLVal
+}
+
+func (r *UnknownRecord) String() string {
+	return fmt.Sprintf("UNKNOWN{domain=%s qtype=%d data_len=%d ttl=%d}",
+		r.DomainName, r.QType, r.DataLen, r.TTLVal)
+}
+
+// All of this Shit, just Because Enums are non existent in Go
+type ARecord struct {
+	DomainName string
+	Addr       net.IP // IPv4 this is also a length of 4
+	TTLVal     uint32
+}
+
+func (r *ARecord) Type() QueryType { return A }
+func (r *ARecord) Domain() string  { return r.DomainName }
+func (r *ARecord) TTL() uint32     { return r.TTLVal }
+func (r *ARecord) String() string {
+	return fmt.Sprintf("A{domain=%s addr=%s ttl=%d}", r.DomainName, r.Addr.String(), r.TTLVal)
+}
+
+func ReadRecord(packetBuffer *ByteBuffer) (DnsRecord, error) {
+
+	name, err := packetBuffer.ReadQname()
+
+	if err != nil {
+		return nil, fmt.Errorf("reading the resource record went wonk: %w", err)
+	}
+
+	qType := packetBuffer.ReadInt16()
+	_ = packetBuffer.ReadInt16()
+
+	ttl, err := packetBuffer.ReadInt32()
+	if err != nil {
+		return nil, fmt.Errorf("read rr ttl: %w", err)
+	}
+	rdlen := packetBuffer.ReadInt16()
+
+	switch QueryType(qType) {
+	case A:
+		if rdlen != 4 {
+			_ = packetBuffer.GetByteRange(packetBuffer.Pos(), int(rdlen))
+			packetBuffer.Step(int(rdlen))
+			return &UnknownRecord{
+				DomainName: name,
+				QType:      qType,
+				DataLen:    rdlen,
+				TTLVal:     ttl,
+			}, fmt.Errorf("a record with invalid rdlen=%d", rdlen)
+		}
+
+		// Read bytes to Build up  IPV4 address boy
+		b0 := packetBuffer.ReadByte()
+		b1 := packetBuffer.ReadByte()
+		b2 := packetBuffer.ReadByte()
+		b3 := packetBuffer.ReadByte()
+
+		ip := net.IPv4(b0, b1, b2, b3).To4()
+		return &ARecord{
+			DomainName: name,
+			Addr:       ip,
+			TTLVal:     ttl,
+		}, nil
+
+	default:
+		packetBuffer.Step(int(rdlen))
+		return &UnknownRecord{
+			DomainName: name,
+			QType:      qType,
+			DataLen:    rdlen,
+			TTLVal:     ttl,
+		}, nil
+	}
+}
+
+type DnsPacket struct {
+	header      DnsHeader
+	questions   []DnsQuestion
+	answers     []DnsRecord
+	authorities []DnsRecord
+	resources   []DnsRecord
+}
+
+func NewDnsPacket() DnsPacket {
+	return DnsPacket{
+		header:      NewDnsHeader(),
+		questions:   make([]DnsQuestion, 0),
+		answers:     make([]DnsRecord, 0),
+		authorities: make([]DnsRecord, 0),
+		resources:   make([]DnsRecord, 0),
+	}
+}
+
+func ReadPacket(buffer *ByteBuffer) (DnsPacket, error) {
+
+	packet := NewDnsPacket()
+
+	if err := (&packet.header).Read(buffer); err != nil {
+		return DnsPacket{}, err
+	}
+
+	for i := 0; i < int(packet.header.question_count); i++ {
+		q := DnsQuestion{}
+		if err := (&q).Read(buffer); err != nil {
+			return DnsPacket{}, err
+		}
+		packet.questions = append(packet.questions, q)
+	}
+
+	for i := 0; i < int(packet.header.awnser_count); i++ {
+		rec, err := ReadRecord(buffer)
+		if err != nil {
+			return DnsPacket{}, err
+		}
+		packet.answers = append(packet.answers, rec)
+	}
+
+	for i := 0; i < int(packet.header.authority_count); i++ {
+		rec, err := ReadRecord(buffer)
+		if err != nil {
+			return DnsPacket{}, err
+		}
+		packet.authorities = append(packet.authorities, rec)
+	}
+
+	for i := 0; i < int(packet.header.aditional_count); i++ {
+		rec, err := ReadRecord(buffer)
+		if err != nil {
+			return DnsPacket{}, err
+		}
+		packet.resources = append(packet.resources, rec)
+	}
+
+	return packet, nil
 }
