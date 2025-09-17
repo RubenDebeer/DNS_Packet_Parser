@@ -107,69 +107,60 @@ func (b *ByteBuffer) ReadInt32() (FourBytes uint32, errRead error) {
 }
 
 func (b *ByteBuffer) ReadQname() (string, error) {
-	const maxJumps = 10
+	const maxJumps = 16
 
-	localPos := 0
+	origPos := b.readerPosition
+	p := origPos
 	jumped := false
 	jumps := 0
 
 	var out strings.Builder
-	delimiter := ""
 
 	for {
-		// Vaidation
 		if jumps > maxJumps {
-			return " ", fmt.Errorf("who , we are trying to jump the gun there max is %d", maxJumps)
+			return "", fmt.Errorf("too many compression jumps")
 		}
-		if localPos >= len(b.buffer) {
-			return "", fmt.Errorf("whow, out of range")
-		}
-
-		length := b.Pos()
-
-		// If the byte at Pos is 11 i.e a flag that indicates a comprtession we need to move to the actual value
-
-		// Compressed Lable Case
-		if (length & 0xC0) == 0xC0 {
-			if localPos >= len(b.buffer) {
-				return "", fmt.Errorf("whow, out of range")
-			}
-
-			if !jumped {
-				b.ChangePosition(localPos + 1)
-			}
-
-			b2 := b.GetByte(localPos + 1)
-			offset := int((uint16(length&0x3F) << 8) | uint16(b2))
-
-			localPos = offset
-			jumped = true
-			jumps++
-			continue
+		if p >= len(b.buffer) {
+			return "", fmt.Errorf("qname: out of range")
 		}
 
-		// Normal Lable case
-		localPos++
-		if length == 0 {
+		l := int(b.buffer[p])
+
+		if l == 0 {
+			p++
 			break
 		}
 
-		if localPos+(length) > len(b.buffer) {
-			return "", fmt.Errorf("whow, out of range")
+		if (l & 0xC0) == 0xC0 {
+			if p+1 >= len(b.buffer) {
+				return "", fmt.Errorf("qname pointer: out of range")
+			}
+			ptr := ((l & 0x3F) << 8) | int(b.buffer[p+1])
+			p = ptr
+			jumps++
+			if !jumped {
+
+				b.readerPosition = origPos + 2
+				jumped = true
+			}
+			continue
 		}
 
-		out.WriteString(delimiter)
-		lable := b.GetByteRange(localPos, int(length))
-		out.WriteString(strings.ToLower(string(lable)))
-
-		delimiter = "."
-		localPos = int(length)
+		// regular label
+		p++
+		if p+l > len(b.buffer) {
+			return "", fmt.Errorf("qname label: out of range")
+		}
+		if out.Len() > 0 {
+			out.WriteString(".")
+		}
+		out.Write(b.buffer[p : p+l])
+		p += l
 	}
 
 	if !jumped {
-		b.ChangePosition(localPos)
+		b.readerPosition = p
 	}
-
 	return out.String(), nil
 }
 
